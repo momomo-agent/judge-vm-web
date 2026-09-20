@@ -18,14 +18,31 @@
 
   <main>
     <section class="editor">
+      <!-- Left pane: source code -->
       <div class="pane">
         <div class="pane-header">
-          <span>JASM Source</span>
+          <div class="mode-tabs">
+            <button class="tab active" data-mode="jasm">JASM</button>
+            <button class="tab" data-mode="sdk">SDK</button>
+          </div>
           <button id="btn-example" class="ghost">Load example</button>
         </div>
+        <!-- JASM mode: direct assembly -->
         <textarea id="src" spellcheck="false"></textarea>
+        <!-- SDK mode: JS code (hidden by default) -->
+        <textarea id="sdk-src" spellcheck="false" class="hidden" placeholder="jasm()
+  .state('ticket')
+  .judge('ticket', 'choice', 'which team?', ['billing', 'tech'])
+  .emit({ team: '$judge0' })
+  .halt()"></textarea>
+        <!-- SDK mode: compiled JASM preview (read-only, shown after compile) -->
+        <div id="jasm-preview" class="jasm-preview hidden">
+          <div class="preview-header">Compiled JASM <span class="text-faint">↓ auto-generated</span></div>
+          <pre id="jasm-preview-code"></pre>
+        </div>
       </div>
 
+      <!-- Right pane: states JSON -->
       <div class="pane">
         <div class="pane-header">
           <span>States (JSON)</span>
@@ -57,7 +74,6 @@
 </html>
 
 <script>
-  // Debug autorun: append ?autorun=1
   if (new URLSearchParams(location.search).get('autorun') === '1') {
     setTimeout(() => document.querySelector('#btn-run').click(), 800);
   }

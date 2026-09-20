@@ -208,3 +208,57 @@ button.ghost:hover { color: var(--text); background: var(--surface-3); }
   border-left: 3px solid var(--danger);
   white-space: pre-wrap;
 }
+
+/* Mode tabs */
+.mode-tabs { display: flex; gap: 0; }
+.mode-tabs .tab {
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid var(--border);
+  border-radius: 4px 4px 0 0;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  margin-bottom: -1px;
+}
+.mode-tabs .tab:first-child { border-right: none; border-radius: 4px 0 0 0; }
+.mode-tabs .tab:last-child { border-radius: 0 4px 0 0; }
+.mode-tabs .tab.active {
+  background: var(--surface);
+  color: var(--accent);
+  border-bottom-color: var(--surface);
+}
+.mode-tabs .tab:not(.active):hover { color: var(--text-dim); }
+
+/* Hidden utility */
+.hidden { display: none !important; }
+
+/* JASM preview in SDK mode */
+.jasm-preview {
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+  max-height: 40%;
+  overflow: auto;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.jasm-preview .preview-header {
+  padding: 4px 12px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  border-bottom: 1px solid var(--border);
+}
+.jasm-preview .preview-header .text-faint { color: var(--text-faint); }
+.jasm-preview pre {
+  margin: 0;
+  padding: 8px 12px;
+  color: var(--accent);
+  white-space: pre-wrap;
+  word-break: break-all;
+}

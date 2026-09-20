@@ -2,6 +2,9 @@
 const $ = (sel) => document.querySelector(sel);
 
 const srcEl = $('#src');
+const sdkSrcEl = $('#sdk-src');
+const jasmPreview = $('#jasm-preview');
+const jasmPreviewCode = $('#jasm-preview-code');
 const statesEl = $('#states');
 const runBtn = $('#btn-run');
 const exBtn = $('#btn-example');
@@ -9,22 +12,75 @@ const statusEl = $('#run-status');
 const traceEl = $('#trace');
 const outputEl = $('#output');
 
+// ======== Mode switching ========
+let currentMode = 'jasm'; // 'jasm' | 'sdk'
+
+document.querySelectorAll('.mode-tabs .tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const mode = tab.dataset.mode;
+    if (mode === currentMode) return;
+    currentMode = mode;
+    document.querySelectorAll('.mode-tabs .tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
+
+    if (mode === 'jasm') {
+      srcEl.classList.remove('hidden');
+      sdkSrcEl.classList.add('hidden');
+      jasmPreview.classList.add('hidden');
+    } else {
+      srcEl.classList.add('hidden');
+      sdkSrcEl.classList.remove('hidden');
+      // Show preview only if we have compiled JASM
+      if (jasmPreviewCode.textContent) jasmPreview.classList.remove('hidden');
+    }
+  });
+});
+
+// ======== Examples ========
+const SDK_EXAMPLE = `jasm()
+  .state('ticket', 'history', 'screenshot')
+  .sense('screenshot', 'image', 'what does this screenshot show?')
+  .recall('history', 'similar tickets', { top: 3 })
+  .judge('ticket', 'choice', 'which team?', ['billing', 'technical', 'sales'])
+  .judge('ticket', 'score', 'how urgent?', ['low', 'medium', 'high', 'critical'])
+  .gen('ticket', 'text', 'Draft an empathetic customer reply')
+  .branch('$judge1', '>=', 3, 'critical')
+  .label('normal')
+    .emit({ team: '$judge0', urgency: '$judge1', draft: '$gen0' })
+    .halt()
+  .label('critical')
+    .emit({ team: '$judge0', urgency: 'CRITICAL', draft: '$gen0', page: true })
+    .halt()`;
+
+const SDK_EXAMPLE_STATES = {
+  ticket: 'Charged twice on order #A-104, no reply in 3 days, want refund NOW.',
+  history: { corpus: 'past_tickets' },
+  screenshot: 'mock://receipt.png',
+};
+
 async function loadExample() {
-  const res = await fetch('/api/example');
-  if (!res.ok) throw new Error('Failed to load example: ' + res.status);
-  const ex = await res.json();
-  srcEl.value = ex.program;
-  statesEl.value = JSON.stringify(ex.states, null, 2);
+  if (currentMode === 'jasm') {
+    const res = await fetch('/api/example');
+    if (!res.ok) throw new Error('Failed to load example: ' + res.status);
+    const ex = await res.json();
+    srcEl.value = ex.program;
+    statesEl.value = JSON.stringify(ex.states, null, 2);
+  } else {
+    sdkSrcEl.value = SDK_EXAMPLE;
+    statesEl.value = JSON.stringify(SDK_EXAMPLE_STATES, null, 2);
+    jasmPreview.classList.add('hidden');
+    jasmPreviewCode.textContent = '';
+  }
 }
 
+// ======== Rendering ========
 function fmtVal(v) {
   if (typeof v !== 'object' || v === null) return String(v);
-  if ('pick' in v) return `${v.pick} · confidence ${(v.confidence ?? 1).toFixed(2)}`;                        // J.choice
-  if ('value' in v && typeof v.value === 'number') return `${v.value.toFixed(2)} · confidence ${(v.confidence ?? 1).toFixed(2)}`;  // J.score
-  if ('p' in v) return `p = ${v.p.toFixed(3)}`;                                                                // J.noul
-  if ('text' in v && typeof v.text === 'string') {                                                             // L.text
+  if ('pick' in v) return `${v.pick} · confidence ${(v.confidence ?? 1).toFixed(2)}`;
+  if ('value' in v && typeof v.value === 'number') return `${v.value.toFixed(2)} · confidence ${(v.confidence ?? 1).toFixed(2)}`;
+  if ('p' in v) return `p = ${v.p.toFixed(3)}`;
+  if ('text' in v && typeof v.text === 'string') {
     const preview = v.text.length > 120 ? v.text.slice(0, 120) + '…' : v.text;
-    return `“${preview}”`;
+    return `"${preview}"`;
   }
   if ('code' in v) return `<code>${(v.code.length > 100 ? v.code.slice(0, 100) + '…' : v.code).replace(/</g, '&lt;')}</code>`;
   if ('hits' in v) {
@@ -35,7 +91,7 @@ function fmtVal(v) {
     const facts = typeof v.facts === 'object' ? JSON.stringify(v.facts) : v.facts;
     return facts.length > 100 ? facts.slice(0, 100) + '…' : facts;
   }
-  if ('transcript' in v) return `‹audio› “${(v.transcript || '').slice(0, 100)}”`;
+  if ('transcript' in v) return `‹audio› "${(v.transcript || '').slice(0, 100)}"`;
   return JSON.stringify(v).slice(0, 100);
 }
 
@@ -43,7 +99,6 @@ function renderTrace(trace) {
   traceEl.innerHTML = '';
   for (const t of trace) {
     const line = document.createElement('div');
-    // Style trace lines by JLMP primitive when it's a batch, otherwise by kind.
     const styleKind = t.kind === 'batch' && t.primitive ? `batch-${t.primitive.toLowerCase()}` : t.kind;
     line.className = `trace-line ${styleKind}`;
 
@@ -51,7 +106,6 @@ function renderTrace(trace) {
     let inner = `<span class="pc">pc=${t.pc}</span><span class="kind ${styleKind}">${badge}</span>`;
 
     if (t.kind === 'batch') {
-      // JLMP primitive dispatch
       const items = t.detail.judges || t.detail.gens || t.detail.recalls || t.detail.senses || [];
       const label = t.primitive === 'J' ? 'judges' : t.primitive === 'L' ? 'gens' : t.primitive === 'M' ? 'recalls' : t.primitive === 'P' ? 'senses' : 'ops';
       inner += `<span>× ${items.length} ${label}</span>`;
@@ -95,22 +149,48 @@ function renderOutput(result) {
   outputEl.innerHTML = parts.join('');
 }
 
-async function run() {
+// ======== Run ========
+async function doRun() {
   runBtn.disabled = true;
   statusEl.textContent = 'running…';
   statusEl.className = 'status';
   traceEl.innerHTML = '';
   outputEl.innerHTML = '';
   const t0 = performance.now();
+
   try {
     let states;
     try { states = JSON.parse(statesEl.value); }
     catch (e) { throw new Error('Invalid state JSON: ' + e.message); }
 
+    let programSrc;
+
+    if (currentMode === 'sdk') {
+      // Step 1: compile SDK code → JASM on the server
+      statusEl.textContent = 'compiling SDK → JASM…';
+      const compileRes = await fetch('/api/sdk', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ code: sdkSrcEl.value }),
+      });
+      const compileData = await compileRes.json();
+      if (compileData.error) throw new Error('SDK compile error: ' + compileData.error);
+      programSrc = compileData.jasm;
+
+      // Show compiled JASM in the preview pane
+      jasmPreviewCode.textContent = programSrc;
+      jasmPreview.classList.remove('hidden');
+
+      statusEl.textContent = 'running…';
+    } else {
+      programSrc = srcEl.value;
+    }
+
+    // Step 2: run the JASM
     const res = await fetch('/api/run', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ program: srcEl.value, states }),
+      body: JSON.stringify({ program: programSrc, states }),
     });
     const data = await res.json();
     if (data.error) {
@@ -121,7 +201,8 @@ async function run() {
       renderTrace(data.result.trace);
       renderOutput(data.result);
       const s = data.result.stats;
-      statusEl.textContent = `ok · ${s.totalMs}ms exec · ${s.apiCalls} API call · ${s.tokens.in + s.tokens.out} tokens`;
+      const prefix = currentMode === 'sdk' ? 'sdk → ' : '';
+      statusEl.textContent = `${prefix}ok · ${s.totalMs}ms exec · ${s.apiCalls} API calls · ${s.tokens.in + s.tokens.out} tokens`;
       statusEl.className = 'status ok';
     }
   } catch (e) {
@@ -133,6 +214,6 @@ async function run() {
   }
 }
 
-runBtn.addEventListener('click', run);
+runBtn.addEventListener('click', doRun);
 exBtn.addEventListener('click', loadExample);
 loadExample();
