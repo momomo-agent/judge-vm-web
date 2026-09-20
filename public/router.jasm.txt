@@ -1,0 +1,22 @@
+; Customer support ticket router
+; Demonstrates: basic-block batching, probabilistic BRANCH, EMIT
+.state ticket
+
+JUDGE %r0, noul "The message conveys urgency" %ticket
+JUDGE %r1, choice "Which team should handle this ticket?" [billing, technical, sales, other] %ticket
+JUDGE %r2, score "How frustrated is the customer?" ["calm", "annoyed", "frustrated", "very angry"] %ticket
+
+BRANCH %r0 > 0.7, .urgent_path
+BRANCH %r1 == "billing", .billing_path
+
+.default:
+  EMIT { queue: %r1, priority: "normal", frustration: %r2 }
+  HALT
+
+.urgent_path:
+  EMIT { queue: %r1, priority: "high", reason: "urgent", frustration: %r2 }
+  HALT
+
+.billing_path:
+  EMIT { queue: "billing", priority: "normal", frustration: %r2 }
+  HALT

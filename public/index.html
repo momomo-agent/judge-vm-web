@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Judge VM Playground</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <span class="logo">◈</span>
+      <span class="title">Judge VM</span>
+      <span class="tagline">Give judgement its own VM.</span>
+    </div>
+    <div class="version">v0.0.1 · JASM spec draft · powered by TypeSafe Jev</div>
+  </header>
+
+  <main>
+    <section class="editor">
+      <div class="pane">
+        <div class="pane-header">
+          <span>JASM Source</span>
+          <button id="btn-example" class="ghost">Load example</button>
+        </div>
+        <textarea id="src" spellcheck="false"></textarea>
+      </div>
+
+      <div class="pane">
+        <div class="pane-header">
+          <span>States (JSON)</span>
+        </div>
+        <textarea id="states" spellcheck="false"></textarea>
+      </div>
+    </section>
+
+    <section class="run-bar">
+      <button id="btn-run" class="primary">▶ Run</button>
+      <span id="run-status" class="status"></span>
+    </section>
+
+    <section class="output">
+      <div class="pane">
+        <div class="pane-header"><span>Execution Trace</span></div>
+        <div id="trace" class="trace"></div>
+      </div>
+
+      <div class="pane">
+        <div class="pane-header"><span>Registers & Emits</span></div>
+        <div id="output" class="output-panel"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/client.js"></script>
+</body>
+</html>
