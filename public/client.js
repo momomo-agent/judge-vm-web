@@ -19,26 +19,48 @@ async function loadExample() {
 
 function fmtVal(v) {
   if (typeof v !== 'object' || v === null) return String(v);
-  if ('pick' in v) return `${v.pick} · confidence ${(v.confidence ?? 1).toFixed(2)}`;
-  if ('value' in v) return `${v.value.toFixed(2)} · confidence ${(v.confidence ?? 1).toFixed(2)}`;
-  if ('p' in v) return `p = ${v.p.toFixed(3)}`;
-  return JSON.stringify(v);
+  if ('pick' in v) return `${v.pick} · confidence ${(v.confidence ?? 1).toFixed(2)}`;                        // J.choice
+  if ('value' in v && typeof v.value === 'number') return `${v.value.toFixed(2)} · confidence ${(v.confidence ?? 1).toFixed(2)}`;  // J.score
+  if ('p' in v) return `p = ${v.p.toFixed(3)}`;                                                                // J.noul
+  if ('text' in v && typeof v.text === 'string') {                                                             // L.text
+    const preview = v.text.length > 120 ? v.text.slice(0, 120) + '…' : v.text;
+    return `“${preview}”`;
+  }
+  if ('code' in v) return `<code>${(v.code.length > 100 ? v.code.slice(0, 100) + '…' : v.code).replace(/</g, '&lt;')}</code>`;
+  if ('hits' in v) {
+    const n = Array.isArray(v.hits) ? v.hits.length : v.hits;
+    return `${n} hit${n === 1 ? '' : 's'}`;
+  }
+  if ('facts' in v) {
+    const facts = typeof v.facts === 'object' ? JSON.stringify(v.facts) : v.facts;
+    return facts.length > 100 ? facts.slice(0, 100) + '…' : facts;
+  }
+  if ('transcript' in v) return `‹audio› “${(v.transcript || '').slice(0, 100)}”`;
+  return JSON.stringify(v).slice(0, 100);
 }
 
 function renderTrace(trace) {
   traceEl.innerHTML = '';
   for (const t of trace) {
     const line = document.createElement('div');
-    line.className = `trace-line ${t.kind}`;
+    // Style trace lines by JLMP primitive when it's a batch, otherwise by kind.
+    const styleKind = t.kind === 'batch' && t.primitive ? `batch-${t.primitive.toLowerCase()}` : t.kind;
+    line.className = `trace-line ${styleKind}`;
 
-    let inner = `<span class="pc">pc=${t.pc}</span><span class="kind ${t.kind}">${t.kind.toUpperCase()}</span>`;
+    const badge = t.kind === 'batch' && t.primitive ? t.primitive : t.kind.toUpperCase();
+    let inner = `<span class="pc">pc=${t.pc}</span><span class="kind ${styleKind}">${badge}</span>`;
 
     if (t.kind === 'batch') {
-      inner += `<span>× ${t.detail.judges.length} judges</span>`;
-      inner += `<div class="meta">${t.latencyMs}ms · ${t.usage?.totalTokens ?? '?'} tokens (in:${t.usage?.inputTokens ?? '?'} · out:${t.usage?.outputTokens ?? '?'})</div>`;
-      for (const j of t.detail.judges) {
-        const ans = t.detail.answers[j.dest];
-        inner += `<div class="judge-row"><span class="reg">${j.dest}</span> <span class="kind-tag">${j.kind}</span> "${j.instructions}" → <span class="result">${fmtVal(ans)}</span></div>`;
+      // JLMP primitive dispatch
+      const items = t.detail.judges || t.detail.gens || t.detail.recalls || t.detail.senses || [];
+      const label = t.primitive === 'J' ? 'judges' : t.primitive === 'L' ? 'gens' : t.primitive === 'M' ? 'recalls' : t.primitive === 'P' ? 'senses' : 'ops';
+      inner += `<span>× ${items.length} ${label}</span>`;
+      inner += `<div class="meta">${t.latencyMs}ms${t.usage?.totalTokens ? ` · ${t.usage.totalTokens} tokens` : ''}</div>`;
+      for (const item of items) {
+        const ans = t.detail.answers?.[item.dest];
+        const kindTag = item.kind ? `<span class="kind-tag">${item.kind}</span>` : '';
+        const query = item.instructions || item.prompt || item.query || '';
+        inner += `<div class="judge-row"><span class="reg">${item.dest}</span> ${kindTag} "${query}" → <span class="result">${fmtVal(ans)}</span></div>`;
       }
     } else if (t.kind === 'branch') {
       const tk = t.detail.taken ? `<span style="color: var(--success)">TAKE .${t.detail.target}</span>` : `<span style="color: var(--text-faint)">fall through</span>`;

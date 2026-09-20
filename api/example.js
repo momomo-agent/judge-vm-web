@@ -5,9 +5,12 @@ import { dirname, join } from 'node:path';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const EXAMPLE = {
-  program: readFileSync(join(__dirname, '../public/router.jasm.txt'), 'utf8'),
+  // Default to the JLMP four-primitive router (v0.2)
+  program: readFileSync(join(__dirname, '../public/jlmp-router.jasm.txt'), 'utf8'),
   states: {
     ticket: `I've been charged twice for order #A-104 and no one has replied to my emails for 3 days. This is ridiculous, I want a refund NOW.`,
+    history: { corpus: 'past_tickets' },
+    screenshot: 'screenshot://mock/receipt.png',
   },
 };
 

@@ -55,3 +55,10 @@
   <script src="/client.js"></script>
 </body>
 </html>
+
+<script>
+  // Debug autorun: append ?autorun=1
+  if (new URLSearchParams(location.search).get('autorun') === '1') {
+    setTimeout(() => document.querySelector('#btn-run').click(), 800);
+  }
+</script>

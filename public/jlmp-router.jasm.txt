@@ -1,0 +1,29 @@
+; JLMP demo — all four primitives in one program.
+; A ticket router that: perceives a screenshot, recalls similar tickets,
+; judges category+urgency, and generates a draft reply.
+.state ticket
+.state history
+.state screenshot
+
+; P — extract facts from screenshot
+SENSE  %r0, image "what does this screenshot show?" %screenshot
+
+; M — find similar past tickets
+RECALL %r1, top=3 "similar tickets to this one" %history
+
+; J — classify + score (both fuse into 1 J call)
+JUDGE  %r2, choice "which team should handle this?" [billing, technical, sales, other] %ticket
+JUDGE  %r3, score  "how urgent is this?" ["low", "medium", "high", "critical"] %ticket
+
+; L — draft the reply using everything above
+GEN    %r4, text "Given the ticket, similar past tickets, and screenshot context, write a short empathetic reply for the {ticket} team." %ticket
+
+BRANCH %r3 >= 3, .critical
+
+.normal:
+  EMIT { team: %r2, urgency: %r3, draft: %r4 }
+  HALT
+
+.critical:
+  EMIT { team: %r2, urgency: "CRITICAL", draft: %r4, page_on_call: true }
+  HALT
