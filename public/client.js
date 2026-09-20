@@ -7,7 +7,8 @@ const jasmPreview = $('#jasm-preview');
 const jasmPreviewCode = $('#jasm-preview-code');
 const statesEl = $('#states');
 const runBtn = $('#btn-run');
-const exBtn = $('#btn-example');
+const tplSelect = $('#tpl-select');
+const tplTagline = $('#tpl-tagline');
 const statusEl = $('#run-status');
 const traceEl = $('#trace');
 const outputEl = $('#output');
@@ -35,41 +36,41 @@ document.querySelectorAll('.mode-tabs .tab').forEach(tab => {
   });
 });
 
-// ======== Examples ========
-const SDK_EXAMPLE = `jasm()
-  .state('ticket', 'history', 'screenshot')
-  .sense('screenshot', 'image', 'what does this screenshot show?')
-  .recall('history', 'similar tickets', { top: 3 })
-  .judge('ticket', 'choice', 'which team?', ['billing', 'technical', 'sales'])
-  .judge('ticket', 'score', 'how urgent?', ['low', 'medium', 'high', 'critical'])
-  .gen('ticket', 'text', 'Draft an empathetic customer reply')
-  .branch('$judge1', '>=', 3, 'critical')
-  .label('normal')
-    .emit({ team: '$judge0', urgency: '$judge1', draft: '$gen0' })
-    .halt()
-  .label('critical')
-    .emit({ team: '$judge0', urgency: 'CRITICAL', draft: '$gen0', page: true })
-    .halt()`;
+// ======== Templates ========
+let templateIndex = [];
+let currentTemplate = null;
 
-const SDK_EXAMPLE_STATES = {
-  ticket: 'Charged twice on order #A-104, no reply in 3 days, want refund NOW.',
-  history: { corpus: 'past_tickets' },
-  screenshot: 'mock://receipt.png',
-};
+async function loadTemplateIndex() {
+  const res = await fetch('/api/templates');
+  if (!res.ok) throw new Error('Failed to load template index: ' + res.status);
+  const data = await res.json();
+  templateIndex = data.templates;
 
-async function loadExample() {
-  if (currentMode === 'jasm') {
-    const res = await fetch('/api/example');
-    if (!res.ok) throw new Error('Failed to load example: ' + res.status);
-    const ex = await res.json();
-    srcEl.value = ex.program;
-    statesEl.value = JSON.stringify(ex.states, null, 2);
-  } else {
-    sdkSrcEl.value = SDK_EXAMPLE;
-    statesEl.value = JSON.stringify(SDK_EXAMPLE_STATES, null, 2);
-    jasmPreview.classList.add('hidden');
-    jasmPreviewCode.textContent = '';
+  // Populate the select
+  tplSelect.innerHTML = '';
+  for (const t of templateIndex) {
+    const opt = document.createElement('option');
+    opt.value = t.id;
+    opt.textContent = t.name;
+    tplSelect.appendChild(opt);
   }
+}
+
+async function loadTemplate(id) {
+  const res = await fetch(`/api/templates?id=${encodeURIComponent(id)}`);
+  if (!res.ok) throw new Error('Failed to load template ' + id + ': ' + res.status);
+  const tpl = await res.json();
+  currentTemplate = tpl;
+  tplTagline.textContent = tpl.tagline || '';
+
+  // Populate both editors so switching mode works instantly
+  srcEl.value = tpl.jasm;
+  sdkSrcEl.value = tpl.sdk;
+  statesEl.value = JSON.stringify(tpl.states, null, 2);
+
+  // Clear any prior compiled JASM preview
+  jasmPreview.classList.add('hidden');
+  jasmPreviewCode.textContent = '';
 }
 
 // ======== Rendering ========
@@ -215,5 +216,9 @@ async function doRun() {
 }
 
 runBtn.addEventListener('click', doRun);
-exBtn.addEventListener('click', loadExample);
-loadExample();
+tplSelect.addEventListener('change', () => loadTemplate(tplSelect.value));
+
+(async () => {
+  await loadTemplateIndex();
+  await loadTemplate(templateIndex[0].id);
+})();

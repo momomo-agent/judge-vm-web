@@ -209,6 +209,39 @@ button.ghost:hover { color: var(--text); background: var(--surface-3); }
   white-space: pre-wrap;
 }
 
+/* Template picker */
+.template-picker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  justify-content: flex-end;
+  min-width: 0;
+}
+.tpl-select {
+  padding: 3px 10px;
+  font-size: 12px;
+  font-family: inherit;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  outline: none;
+}
+.tpl-select:hover { background: var(--surface-3); }
+.tpl-select:focus { border-color: var(--accent); }
+.tpl-tagline {
+  color: var(--text-faint);
+  font-size: 11px;
+  font-family: var(--mono);
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Mode tabs */
 .mode-tabs { display: flex; gap: 0; }
 .mode-tabs .tab {

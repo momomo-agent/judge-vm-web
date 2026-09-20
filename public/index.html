@@ -25,7 +25,10 @@
             <button class="tab active" data-mode="jasm">JASM</button>
             <button class="tab" data-mode="sdk">SDK</button>
           </div>
-          <button id="btn-example" class="ghost">Load example</button>
+          <div class="template-picker">
+            <select id="tpl-select" class="tpl-select"></select>
+            <span id="tpl-tagline" class="tpl-tagline"></span>
+          </div>
         </div>
         <!-- JASM mode: direct assembly -->
         <textarea id="src" spellcheck="false"></textarea>
